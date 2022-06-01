@@ -121,7 +121,7 @@ class AppStateHandler @Inject constructor(
             Timber.w(Exception("Home pager: setCurrentSpace/SELECT"))
         }
 
-        if (isForwardNavigation) {
+        if (isForwardNavigation && from in listOf(SelectSpaceFrom.SELECT, SelectSpaceFrom.INIT)) {
             spaceBackstack.addLast(currentSpace?.roomId)
         }
 

@@ -828,7 +828,7 @@ class HomeDetailFragment @Inject constructor(
         return this
     }
 
-    override fun onBackPressed(toolbarButton: Boolean) = if (getCurrentSpace() != null) {
+    override fun onBackPressed(toolbarButton: Boolean) = if (!pagerPagingEnabled && getCurrentSpace() != null) {
         navigateBack()
         true
     } else {
