@@ -36,7 +36,7 @@ class AutocompleteEmojiController @Inject constructor(
         }
     }
 
-    var listener: AutocompleteClickListener<String>? = null
+    var listener: AutocompleteClickListener<EmojiItem>? = null
 
     override fun buildModels(data: List<EmojiItem>?) {
         if (data.isNullOrEmpty()) {
@@ -50,7 +50,7 @@ class AutocompleteEmojiController @Inject constructor(
                         id(emojiItem.name)
                         emojiItem(emojiItem)
                         emojiTypeFace(host.emojiTypeface)
-                        onClickListener { host.listener?.onItemClick(emojiItem.emoji) }
+                        onClickListener { host.listener?.onItemClick(emojiItem) }
                     }
                 }
 

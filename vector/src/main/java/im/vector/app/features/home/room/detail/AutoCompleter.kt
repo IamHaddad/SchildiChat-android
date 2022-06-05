@@ -40,6 +40,7 @@ import im.vector.app.features.command.Command
 import im.vector.app.features.displayname.getBestName
 import im.vector.app.features.home.AvatarRenderer
 import im.vector.app.features.html.PillImageSpan
+import im.vector.app.features.reactions.data.EmojiItem
 import im.vector.app.features.themes.ThemeUtils
 import org.matrix.android.sdk.api.session.group.model.GroupSummary
 import org.matrix.android.sdk.api.session.room.model.RoomSummary
@@ -55,12 +56,14 @@ class AutoCompleter @AssistedInject constructor(
         private val commandAutocompletePolicy: CommandAutocompletePolicy,
         autocompleteCommandPresenterFactory: AutocompleteCommandPresenter.Factory,
         private val autocompleteMemberPresenterFactory: AutocompleteMemberPresenter.Factory,
+        private val autocompleteEmojiPresenterFactory: AutocompleteEmojiPresenter.Factory,
         private val autocompleteRoomPresenter: AutocompleteRoomPresenter,
         private val autocompleteGroupPresenter: AutocompleteGroupPresenter,
-        private val autocompleteEmojiPresenter: AutocompleteEmojiPresenter
+        //private val autocompleteEmojiPresenter: AutocompleteEmojiPresenter
 ) {
 
     private lateinit var autocompleteMemberPresenter: AutocompleteMemberPresenter
+    private lateinit var autocompleteEmojiPresenter: AutocompleteEmojiPresenter
 
     @AssistedFactory
     interface Factory {
@@ -189,13 +192,14 @@ class AutoCompleter @AssistedInject constructor(
     }
 
     private fun setupEmojis(backgroundDrawable: Drawable, editText: EditText) {
-        Autocomplete.on<String>(editText)
+        autocompleteEmojiPresenter = autocompleteEmojiPresenterFactory.create(roomId)
+        Autocomplete.on<EmojiItem>(editText)
                 .with(CharPolicy(TRIGGER_AUTO_COMPLETE_EMOJIS, false))
                 .with(autocompleteEmojiPresenter)
                 .with(ELEVATION_DP)
                 .with(backgroundDrawable)
-                .with(object : AutocompleteCallback<String> {
-                    override fun onPopupItemClicked(editable: Editable, item: String): Boolean {
+                .with(object : AutocompleteCallback<EmojiItem> {
+                    override fun onPopupItemClicked(editable: Editable, item: EmojiItem): Boolean {
                         // Infer that the last ":" before the current cursor position is the original popup trigger
                         var startIndex = editable.subSequence(0, editText.selectionStart).lastIndexOf(":")
                         if (startIndex == -1) {
@@ -210,7 +214,25 @@ class AutoCompleter @AssistedInject constructor(
 
                         // Replace the word by its completion
                         editable.delete(startIndex, endIndex)
-                        editable.insert(startIndex, item)
+                        if (item.mxcUrl.isNotEmpty()) {
+                            // Add emote html
+                            val emote = ":${item.name}:"
+                            editable.insert(startIndex, emote)
+
+                            // Add span to make it look nice
+                            val matrixItem = MatrixItem.EmoteItem(item.mxcUrl, item.name, item.mxcUrl)
+                            val span = PillImageSpan(
+                                    glideRequests,
+                                    avatarRenderer,
+                                    editText.context,
+                                    matrixItem
+                            )
+                            span.bind(editText)
+
+                            editable.setSpan(span, startIndex, startIndex + emote.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        } else {
+                            editable.insert(startIndex, item.emoji)
+                        }
                         return true
                     }
 

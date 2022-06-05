@@ -18,20 +18,35 @@ package im.vector.app.features.autocomplete.emoji
 
 import android.content.Context
 import androidx.recyclerview.widget.RecyclerView
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import im.vector.app.features.autocomplete.AutocompleteClickListener
 import im.vector.app.features.autocomplete.RecyclerViewPresenter
 import im.vector.app.features.reactions.data.EmojiDataSource
+import im.vector.app.features.reactions.data.EmojiItem
+import im.vector.app.features.settings.VectorPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import org.matrix.android.sdk.api.session.Session
+import org.matrix.android.sdk.api.session.events.model.EventType
+import org.matrix.android.sdk.api.session.events.model.toModel
+import org.matrix.android.sdk.api.session.getRoom
+import org.matrix.android.sdk.api.session.room.getStateEvent
+import org.matrix.android.sdk.api.session.room.model.RoomEmoteContent
 
-class AutocompleteEmojiPresenter @Inject constructor(context: Context,
-                                                     private val emojiDataSource: EmojiDataSource,
-                                                     private val controller: AutocompleteEmojiController) :
-        RecyclerViewPresenter<String>(context), AutocompleteClickListener<String> {
+class AutocompleteEmojiPresenter @AssistedInject constructor(context: Context,
+                                                             @Assisted val roomId: String,
+                                                             private val session: Session,
+                                                             private val vectorPreferences: VectorPreferences,
+                                                             private val emojiDataSource: EmojiDataSource,
+                                                             private val controller: AutocompleteEmojiController) :
+        RecyclerViewPresenter<EmojiItem>(context), AutocompleteClickListener<EmojiItem> {
+
+    private val room by lazy { session.getRoom(roomId)!! }
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -44,11 +59,16 @@ class AutocompleteEmojiPresenter @Inject constructor(context: Context,
         controller.listener = null
     }
 
+    @AssistedFactory
+    interface Factory {
+        fun create(roomId: String): AutocompleteEmojiPresenter
+    }
+
     override fun instantiateAdapter(): RecyclerView.Adapter<*> {
         return controller.adapter
     }
 
-    override fun onItemClick(t: String) {
+    override fun onItemClick(t: EmojiItem) {
         dispatchClick(t)
     }
 
@@ -60,7 +80,25 @@ class AutocompleteEmojiPresenter @Inject constructor(context: Context,
             } else {
                 emojiDataSource.filterWith(query.toString())
             }
-            controller.setData(data)
+            // TODO may want to add headers (compare @room vs @person completion) for
+            // - Standard emojis
+            // - Room-specific emotes
+            // - Global emotes (exported from other rooms)
+            val emoteData = if (vectorPreferences.isMarkdownEnabled()) {
+                val images = room.getStateEvent(EventType.ROOM_EMOTES)?.content?.toModel<RoomEmoteContent>()?.images.orEmpty()
+                images.filter {
+                    val usages = it.value.usage
+                    usages.isNullOrEmpty() || RoomEmoteContent.USAGE_EMOTICON in usages
+                }.filter {
+                    query == null || it.key.contains(query, true)
+                }.map {
+                    EmojiItem(it.key, "", mxcUrl = it.value.url)
+                }.sortedBy { it.name }
+                .distinct()
+            } else {
+                emptyList()
+            }
+            controller.setData(emoteData + data)
         }
     }
 }

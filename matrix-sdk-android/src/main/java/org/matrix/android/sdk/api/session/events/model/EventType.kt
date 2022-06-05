@@ -109,6 +109,9 @@ object EventType {
     val POLL_RESPONSE = listOf("org.matrix.msc3381.poll.response", "m.poll.response")
     val POLL_END = listOf("org.matrix.msc3381.poll.end", "m.poll.end")
 
+    // Emotes
+    const val ROOM_EMOTES = "im.ponies.room_emotes"
+
     // Unwedging
     internal const val DUMMY = "m.dummy"
 
