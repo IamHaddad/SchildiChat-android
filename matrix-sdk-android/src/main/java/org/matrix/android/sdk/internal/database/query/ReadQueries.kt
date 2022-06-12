@@ -29,7 +29,8 @@ import org.matrix.android.sdk.internal.database.model.RoomSummaryEntity
 internal fun isEventRead(realmConfiguration: RealmConfiguration,
                          userId: String?,
                          roomId: String?,
-                         eventId: String?): Boolean {
+                         eventId: String?,
+                         ignoreSenderId: Boolean = false): Boolean {
     if (userId.isNullOrBlank() || roomId.isNullOrBlank() || eventId.isNullOrBlank()) {
         return false
     }
@@ -42,9 +43,9 @@ internal fun isEventRead(realmConfiguration: RealmConfiguration,
         when {
             // The event doesn't exist locally, let's assume it hasn't been read
             eventToCheck == null                                          -> false
-            eventToCheck.root?.sender == userId                           -> true
+            !ignoreSenderId && eventToCheck.root?.sender == userId        -> true
             // If new event exists and the latest event is from ourselves we can infer the event is read
-            latestEventIsFromSelf(realm, roomId, userId)                  -> true
+            !ignoreSenderId && latestEventIsFromSelf(realm, roomId, userId) -> true
             eventToCheck.isBeforeLatestReadReceipt(realm, roomId, userId) -> true
             else                                                          -> false
         }

@@ -690,9 +690,9 @@ class TimelineViewModel @AssistedInject constructor(
                 session.coroutineScope.launch(NonCancellable) {
                     rmDimber.i{"set RM and RR to $it"}
                     tryOrNullAnon { room.readService().setReadMarker(it) }
-                    if (loadRoomAtFirstUnread()) {
+                    //if (loadRoomAtFirstUnread()) {
                         tryOrNullAnon { room.readService().setReadReceipt(it) }
-                    }
+                    //}
                 }
             }
             mostRecentDisplayedEvent = null
